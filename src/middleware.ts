@@ -1,39 +1,61 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
+  const res = NextResponse.next();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return req.cookies.getAll().map(({ name, value }) => ({
-            name,
-            value,
-          }))
+  // Check if Supabase environment variables are defined
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Only create Supabase client if both URL and key are available
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+          get(name) {
+            return req.cookies.get(name)?.value;
+          },
+          set(name, value, options) {
+            // Set cookies on the request and response
+            req.cookies.set({
+              name,
+              value,
+              ...options,
+            });
+            res.cookies.set({
+              name,
+              value,
+              ...options,
+            });
+          },
+          remove(name, options) {
+            // Remove cookies from the request and response
+            req.cookies.delete({
+              name,
+              ...options,
+            });
+            res.cookies.delete({
+              name,
+              ...options,
+            });
+          },
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            req.cookies.set(name, value)
-            res.cookies.set(name, value, options)
-          })
-        },
-      },
+      });
+
+      // Refresh session if expired - required for Server Components
+      await supabase.auth.getSession();
+    } catch (error) {
+      console.error("Error in middleware:", error);
     }
-  )
-
-  // Refresh session if expired - required for Server Components
-  const { data: { session }, error } = await supabase.auth.getSession()
-
-  if (error) {
-    console.error('Auth session error:', error)
+  } else {
+    console.warn(
+      "Supabase URL or Anon Key not provided. Skipping auth session check.",
+    );
   }
 
-  return res
+  return res;
 }
 
 // Ensure the middleware is only called for relevant paths
@@ -46,6 +68,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public (public files)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api).*)',
+    "/((?!_next/static|_next/image|favicon.ico|public|api).*)",
   ],
-}
+};

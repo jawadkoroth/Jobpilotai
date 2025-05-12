@@ -1,14 +1,22 @@
-import Link from 'next/link'
-import { createClient } from '../../supabase/server'
-import { Button } from './ui/button'
-import { User, UserCircle } from 'lucide-react'
-import UserProfile from './user-profile'
+import Link from "next/link";
+import { createClient } from "../../supabase/server";
+import { Button } from "./ui/button";
+import { User, UserCircle } from "lucide-react";
+import UserProfile from "./user-profile";
 
 export default async function Navbar() {
-  const supabase = createClient()
+  let user = null;
 
-  const { data: { user } } = await (await supabase).auth.getUser()
-
+  try {
+    const supabase = await createClient();
+    // No need to check if supabase exists since we now return a mock client
+    const {
+      data: { user: userData },
+    } = await supabase.auth.getUser();
+    user = userData;
+  } catch (error) {
+    console.error("Error fetching user:", error);
+  }
 
   return (
     <nav className="w-full border-b border-gray-200 bg-white py-2">
@@ -23,11 +31,9 @@ export default async function Navbar() {
                 href="/dashboard"
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
               >
-                <Button>
-                  Dashboard
-                </Button>
+                <Button>Dashboard</Button>
               </Link>
-              <UserProfile  />
+              <UserProfile />
             </>
           ) : (
             <>
@@ -39,4 +45,14 @@ export default async function Navbar() {
               </Link>
               <Link
                 href="/sign-up"
-                className="px-4 py-
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+}
