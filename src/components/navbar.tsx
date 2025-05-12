@@ -14,7 +14,7 @@ export default async function Navbar() {
     <nav className="w-full border-b border-gray-200 bg-white py-2">
       <div className="container mx-auto px-4 flex justify-between items-center">
         <Link href="/" prefetch className="text-xl font-bold">
-          Logo
+          JobPilot AI
         </Link>
         <div className="flex gap-4 items-center">
           {user ? (
@@ -39,14 +39,4 @@ export default async function Navbar() {
               </Link>
               <Link
                 href="/sign-up"
-                className="px-4 py-2 text-sm font-medium text-white bg-black rounded-md hover:bg-gray-800"
-              >
-                Sign Up
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-    </nav>
-  )
-}
+                className="px-4 py-
