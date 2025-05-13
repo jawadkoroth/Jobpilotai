@@ -1,300 +1,105 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FileText, Loader2, CheckCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import DashboardNavbar from "@/components/dashboard-navbar";
-import UploadArea from "@/components/resume-upload/upload-area";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Upload, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { createClient } from "../../../supabase/client";
 
 export default function ResumeUploadPage() {
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [parsedText, setParsedText] = useState<string | null>(null);
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [savedResumes, setSavedResumes] = useState<any[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
   const supabase = createClient();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    // Fetch user's previously uploaded resumes
-    const fetchResumes = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          const { data, error } = await supabase
-            .from("resumes")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false });
-
-          if (error) {
-            console.error("Error fetching resumes:", error);
-          } else {
-            setSavedResumes(data || []);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching resumes:", error);
-      }
-    };
-
-    fetchResumes();
-  }, []);
-
-  const handleFileUploaded = (url: string, name: string) => {
-    setFileUrl(url);
-    setFileName(name);
-    setParsedText(null);
-    setParseError(null);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] ?? null;
+    setFile(selectedFile);
+    setMessage(null);
+    setError(null);
   };
 
-  const handleParseResume = async () => {
-    if (!fileUrl) return;
-
-    try {
-      setIsParsing(true);
-      setParseError(null);
-
-      const response = await fetch("/api/parse-resume", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ fileUrl }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to parse resume");
-      }
-
-      setParsedText(data.text);
-    } catch (error: any) {
-      console.error("Error parsing resume:", error);
-      setParseError(error.message || "Error parsing resume");
-    } finally {
-      setIsParsing(false);
+  const handleUpload = async () => {
+    if (!file) {
+      setError("Please select a file to upload.");
+      return;
     }
-  };
 
-  const handleSaveResume = async () => {
-    if (!fileUrl || !fileName || !parsedText) return;
+    setUploading(true);
+    setMessage(null);
+    setError(null);
 
-    try {
-      setIsSaving(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Date.now()}.${fileExt}`;
 
-      if (!user) {
-        alert("Please sign in to save your resume");
-        return;
-      }
+    const { data, error } = await supabase.storage
+      .from("resumes")
+      .upload(`public/${fileName}`, file);
 
-      // Save resume to Supabase
-      const { data, error } = await supabase
-        .from("resumes")
-        .insert({
-          user_id: user.id,
-          filename: fileName,
-          url: fileUrl,
-          text_content: parsedText,
-        })
-        .select();
+    setUploading(false);
 
-      if (error) {
-        console.error("Error saving resume:", error);
-        alert("Failed to save resume. Please try again.");
-      } else {
-        // Update the list of saved resumes
-        setSavedResumes([data[0], ...savedResumes]);
-        alert("Resume saved successfully!");
-      }
-    } catch (error) {
-      console.error("Error saving resume:", error);
-      alert("Failed to save resume. Please try again.");
-    } finally {
-      setIsSaving(false);
+    if (error) {
+      console.error("Upload failed:", error.message);
+      setError("Upload failed. Please try again.");
+    } else {
+      setMessage("Resume uploaded successfully!");
+      setTimeout(() => router.push("/dashboard"), 1500);
     }
-  };
-
-  const resetAll = () => {
-    setFileUrl(null);
-    setFileName(null);
-    setParsedText(null);
-    setParseError(null);
   };
 
   return (
-    <>
-      <DashboardNavbar />
-      <main className="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto px-4 py-8 flex flex-col gap-8">
-          {/* Header Section */}
-          <header className="flex flex-col gap-4">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-              Resume Upload
-            </h1>
-            <div className="bg-blue-50 dark:bg-blue-900/30 text-sm p-3 px-4 rounded-lg text-blue-700 dark:text-blue-300 flex gap-2 items-center border border-blue-100 dark:border-blue-800">
-              <FileText size="16" />
-              <span>Upload your resume to parse and extract information</span>
-            </div>
-          </header>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-white rounded-lg shadow p-6 space-y-6">
+        <h1 className="text-2xl font-bold text-center">Upload Your Resume</h1>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Left Column - Upload Card */}
-            <div className="md:col-span-2">
-              <Card className="shadow-md">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText size={20} className="text-primary" />
-                    <span>Resume Upload</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Upload your resume in PDF or DOCX format
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <UploadArea
-                    onFileUploaded={handleFileUploaded}
-                    isUploading={isUploading}
-                    setIsUploading={setIsUploading}
-                  />
-
-                  {fileUrl && (
-                    <div className="mt-6">
-                      <Button
-                        onClick={handleParseResume}
-                        className="w-full"
-                        disabled={isParsing}
-                      >
-                        {isParsing ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Parsing Resume...
-                          </>
-                        ) : (
-                          "Parse Resume"
-                        )}
-                      </Button>
-                    </div>
-                  )}
-
-                  {parseError && (
-                    <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-md text-red-700 dark:text-red-300 text-sm">
-                      {parseError}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Parsed Resume Card */}
-              {parsedText && (
-                <Card className="shadow-md mt-8">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText size={20} className="text-primary" />
-                      <span>Parsed Resume</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Extracted text from {fileName}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md">
-                      <pre className="whitespace-pre-wrap text-sm font-mono overflow-auto max-h-[500px]">
-                        {parsedText}
-                      </pre>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline" onClick={resetAll}>
-                      Upload Another Resume
-                    </Button>
-                    <Button onClick={handleSaveResume} disabled={isSaving}>
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>Save Resume</>
-                      )}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )}
-            </div>
-
-            {/* Right Column - Saved Resumes */}
-            <div className="md:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText size={20} className="text-primary" />
-                    <span>Saved Resumes</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Your previously uploaded resumes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {savedResumes.length > 0 ? (
-                    <div className="space-y-4">
-                      {savedResumes.map((resume) => (
-                        <div
-                          key={resume.id}
-                          className="p-3 border rounded-md flex justify-between items-center"
-                        >
-                          <div className="flex items-center gap-2">
-                            <FileText size={16} className="text-blue-600" />
-                            <div>
-                              <p className="text-sm font-medium truncate max-w-[150px]">
-                                {resume.filename}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {new Date(
-                                  resume.created_at,
-                                ).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle size={16} className="text-green-500" />
-                            <span className="text-xs ml-1 text-green-600">
-                              Active
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <FileText className="mx-auto mb-2 h-8 w-8 text-gray-400" />
-                      <p>No resumes saved yet</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+        <div>
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={handleFileChange}
+            className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4
+            file:rounded-full file:border-0
+            file:text-sm file:font-semibold
+            file:bg-blue-50 file:text-blue-700
+            hover:file:bg-blue-100"
+          />
         </div>
-      </main>
-    </>
+
+        {file && (
+          <p className="text-sm text-gray-500">
+            Selected: <strong>{file.name}</strong>
+          </p>
+        )}
+
+        <button
+          onClick={handleUpload}
+          disabled={uploading}
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="animate-spin w-5 h-5" /> Uploading...
+            </>
+          ) : (
+            <>
+              <Upload className="w-5 h-5" /> Upload Resume
+            </>
+          )}
+        </button>
+
+        {message && (
+          <div className="text-green-600 flex items-center gap-2 text-sm">
+            <CheckCircle className="w-4 h-4" /> {message}
+          </div>
+        )}
+
+        {error && (
+          <div className="text-red-600 flex items-center gap-2 text-sm">
+            <XCircle className="w-4 h-4" /> {error}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
