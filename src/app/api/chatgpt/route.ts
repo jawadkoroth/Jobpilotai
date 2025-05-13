@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { prompt } = await req.json();
+  const { jobTitle, companyName, resume, apiKey } = await req.json();
 
-  if (!process.env.OPENAI_API_KEY) {
+  // Create prompt from job details and resume
+  const prompt = `Write a professional cover letter for a ${jobTitle} position at ${companyName}. Here is my resume for reference:\n\n${resume}`;
+
+  // Use provided API key or fall back to environment variable
+  const openaiApiKey = apiKey || process.env.OPENAI_API_KEY;
+
+  if (!openaiApiKey) {
     return NextResponse.json(
       { error: "OpenAI API key is not configured" },
       { status: 500 },
@@ -15,7 +21,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
         model: "gpt-4",

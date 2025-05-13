@@ -58,10 +58,12 @@ EDUCATION
 M.S. Computer Science | Tech University | 2017
 B.S. Computer Science | State University | 2015`);
   const [copied, setCopied] = useState(false);
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const coverLetterRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
-  // ✅ Load Supabase user data
+  // ✅ Load Supabase user data and OpenAI API key
   useEffect(() => {
     const fetchUser = async () => {
       const res = await fetch("/api/user");
@@ -73,6 +75,12 @@ B.S. Computer Science | State University | 2015`);
       }
     };
     fetchUser();
+
+    // Check for saved API key
+    const savedApiKey = localStorage.getItem("openai_api_key");
+    if (savedApiKey) {
+      setOpenaiApiKey(savedApiKey);
+    }
   }, []);
 
   // ✅ Generate GPT cover letter
@@ -85,7 +93,12 @@ B.S. Computer Science | State University | 2015`);
       const res = await fetch("/api/chatgpt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobTitle, companyName, resume }),
+        body: JSON.stringify({
+          jobTitle,
+          companyName,
+          resume,
+          apiKey: openaiApiKey,
+        }),
       });
 
       const data = await res.json();
@@ -97,10 +110,20 @@ B.S. Computer Science | State University | 2015`);
       setCoverLetter(data.reply);
     } catch (error) {
       console.error("Error generating cover letter:", error);
-      alert("Failed to generate cover letter. Please try again.");
+      if (error.toString().includes("API key")) {
+        setShowApiKeyInput(true);
+      } else {
+        alert("Failed to generate cover letter. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const saveApiKey = () => {
+    localStorage.setItem("openai_api_key", openaiApiKey);
+    setShowApiKeyInput(false);
+    handleGenerate();
   };
 
   // Copy to clipboard function
@@ -150,9 +173,31 @@ B.S. Computer Science | State University | 2015`);
                     <CardDescription>{user.email}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="bg-muted/30 rounded-lg p-4 overflow-hidden text-xs font-mono">
-                      <div className="max-h-48 overflow-auto">
-                        {JSON.stringify(user, null, 2)}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <div className="bg-blue-100 text-blue-700 p-2 rounded-full">
+                          <UserCircle size={16} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{user.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Account active
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="bg-gray-50 p-3 rounded-md">
+                          <p className="text-xs text-muted-foreground">
+                            Resume
+                          </p>
+                          <p className="font-medium">1 uploaded</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-md">
+                          <p className="text-xs text-muted-foreground">
+                            Applications
+                          </p>
+                          <p className="font-medium">3 active</p>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -160,130 +205,88 @@ B.S. Computer Science | State University | 2015`);
               )}
             </div>
 
-            {/* Right Column - Cover Letter Generator */}
+            {/* Right Column - Dashboard Overview */}
             <div className="lg:col-span-2">
               <Card className="shadow-md">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <FileText size={20} className="text-primary" />
-                    <span>AI Cover Letter Generator</span>
+                    <Briefcase size={20} className="text-primary" />
+                    <span>Dashboard Overview</span>
                   </CardTitle>
                   <CardDescription>
-                    Generate a professional cover letter tailored to your job
-                    application
+                    Your job search activity at a glance
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Tabs defaultValue="generate">
-                    <TabsList className="grid w-full grid-cols-2 mb-6">
-                      <TabsTrigger value="generate">Generate</TabsTrigger>
-                      <TabsTrigger value="result" disabled={!coverLetter}>
-                        Result
-                      </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="generate" className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="jobTitle"
-                            className="flex items-center gap-1"
-                          >
-                            <Briefcase size={14} />
-                            Job Title
-                          </Label>
-                          <Input
-                            id="jobTitle"
-                            value={jobTitle}
-                            onChange={(e) => setJobTitle(e.target.value)}
-                            placeholder="e.g. Software Engineer"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="companyName"
-                            className="flex items-center gap-1"
-                          >
-                            <Building size={14} />
-                            Company Name
-                          </Label>
-                          <Input
-                            id="companyName"
-                            value={companyName}
-                            onChange={(e) => setCompanyName(e.target.value)}
-                            placeholder="e.g. Google"
-                          />
-                        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <div className="text-blue-600 mb-1 text-sm font-medium">
+                        Resume
                       </div>
-
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="resume"
-                          className="flex items-center gap-1"
-                        >
-                          <FileText size={14} />
-                          Your Resume
-                        </Label>
-                        <Textarea
-                          id="resume"
-                          value={resume}
-                          onChange={(e) => setResume(e.target.value)}
-                          placeholder="Paste your resume here..."
-                          className="min-h-[200px] font-mono text-sm"
-                        />
+                      <div className="text-2xl font-bold">1</div>
+                      <div className="text-xs text-muted-foreground">
+                        Uploaded
                       </div>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                      <div className="text-green-600 mb-1 text-sm font-medium">
+                        Jobs
+                      </div>
+                      <div className="text-2xl font-bold">5</div>
+                      <div className="text-xs text-muted-foreground">
+                        Matched
+                      </div>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                      <div className="text-purple-600 mb-1 text-sm font-medium">
+                        Applications
+                      </div>
+                      <div className="text-2xl font-bold">3</div>
+                      <div className="text-xs text-muted-foreground">
+                        Submitted
+                      </div>
+                    </div>
+                  </div>
 
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Quick Actions</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <Button
-                        onClick={handleGenerate}
-                        className="w-full"
-                        disabled={
-                          loading || !jobTitle || !companyName || !resume
+                        variant="outline"
+                        className="justify-start"
+                        onClick={() =>
+                          (window.location.href = "/resume-upload")
                         }
                       >
-                        {loading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          "Generate Cover Letter"
-                        )}
+                        <FileText className="mr-2 h-4 w-4" />
+                        Upload Resume
                       </Button>
-                    </TabsContent>
-
-                    <TabsContent value="result">
-                      {coverLetter && (
-                        <div className="space-y-4">
-                          <div
-                            ref={coverLetterRef}
-                            className="p-6 bg-white rounded-lg border border-gray-200 text-sm whitespace-pre-wrap shadow-inner min-h-[300px] max-h-[500px] overflow-auto"
-                          >
-                            {coverLetter}
-                          </div>
-
-                          <div className="flex flex-wrap gap-2 justify-end">
-                            <Button variant="outline" onClick={copyToClipboard}>
-                              {copied ? (
-                                <>
-                                  <CheckCircle className="mr-2 h-4 w-4" />
-                                  Copied!
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="mr-2 h-4 w-4" />
-                                  Copy to Clipboard
-                                </>
-                              )}
-                            </Button>
-                            <Button onClick={exportToPDF}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Export as PDF
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
+                      <Button
+                        variant="outline"
+                        className="justify-start"
+                        onClick={() => (window.location.href = "/cover-letter")}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Generate Cover Letter
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="justify-start"
+                        onClick={() => (window.location.href = "/jobs")}
+                      >
+                        <Briefcase className="mr-2 h-4 w-4" />
+                        Browse Jobs
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="justify-start"
+                        onClick={() => (window.location.href = "/status")}
+                      >
+                        <Clock className="mr-2 h-4 w-4" />
+                        View Applications
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>

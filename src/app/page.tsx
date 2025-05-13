@@ -109,11 +109,46 @@ export default async function Home() {
                 </ul>
               </div>
               <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-                  <Laptop className="w-24 h-24 text-gray-400" />
-                  <span className="ml-4 text-gray-500 font-medium">
-                    Dashboard Preview
-                  </span>
+                <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                  <div className="bg-white p-4 border-b">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                        <div className="text-sm font-medium">
+                          JobPilot Dashboard
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="h-16 bg-blue-100 rounded-md flex items-center justify-center">
+                        <div className="text-xs font-medium text-blue-700">
+                          Resume
+                        </div>
+                      </div>
+                      <div className="h-16 bg-green-100 rounded-md flex items-center justify-center">
+                        <div className="text-xs font-medium text-green-700">
+                          Jobs
+                        </div>
+                      </div>
+                      <div className="h-16 bg-purple-100 rounded-md flex items-center justify-center">
+                        <div className="text-xs font-medium text-purple-700">
+                          Applications
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-6 bg-gray-100 rounded w-full"></div>
+                      <div className="h-6 bg-gray-100 rounded w-3/4"></div>
+                      <div className="h-6 bg-gray-100 rounded w-1/2"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

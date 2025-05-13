@@ -71,8 +71,17 @@ export default function UploadArea({
       setIsUploading(true);
       setUploadError(null);
 
+      // Check if user is authenticated
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setUploadError("Please sign in to upload your resume");
+        return;
+      }
+
       const fileExt = file.name.split(".").pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}_${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { data, error } = await supabase.storage
